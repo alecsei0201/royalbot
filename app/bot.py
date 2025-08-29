@@ -1,9 +1,9 @@
+from __future__ import annotations
 import logging, os, py_compile, shutil, asyncio
 import discord
 from discord.ext import commands
 from app.core.config import get_settings
 from app.core.db import DB
-from app import health as health_server
 
 log = logging.getLogger("royalbot")
 
@@ -26,7 +26,6 @@ class RoyalBot(commands.Bot):
             return "!"
 
     async def setup_hook(self):
-        # DB + core cogs
         s = get_settings()
         self.db = DB(s.db_path)
         await self.db.connect(); await self.db.migrate()
@@ -49,16 +48,16 @@ class RoyalBot(commands.Bot):
 
         await self._load_plugins_from_dir("app/ext/plugins")
 
-        try:
-            s = get_settings()
-            if s.test_guild_id:
-                await self.tree.sync(guild=discord.Object(id=s.test_guild_id))
-            else:
-                await self.tree.sync()
-            self.synced = True
-            log.info("Slash commands synced.")
-        except Exception:
-            log.exception("Slash sync failed")
+        if not self.synced:
+            try:
+                if s.test_guild_id:
+                    await self.tree.sync(guild=discord.Object(id=s.test_guild_id))
+                else:
+                    await self.tree.sync()
+                self.synced = True
+                log.info("Slash commands synced.")
+            except Exception:
+                log.exception("Slash sync failed")
 
     async def _load_plugins_from_dir(self, path: str):
         os.makedirs("app/ext/quarantine", exist_ok=True)
@@ -83,10 +82,6 @@ class RoyalBot(commands.Bot):
                     log.warning("Plugin failed %s -> quarantine: %s", mod, e)
 
 async def main():
-    # 1) health-сервер поднимаем СРАЗУ — до логина в Discord
-    asyncio.create_task(health_server.start_health_server())
-
-    # 2) запускаем бота
     s = get_settings()
     logging.basicConfig(
         level=getattr(logging, s.log_level.upper(), logging.INFO),
@@ -96,9 +91,8 @@ async def main():
     try:
         await bot.start(s.token)
     except Exception as e:
-        # Если логин/рантайм упали — не гасим процесс, чтобы Fly checks проходили,
-        # а ты видел логи и мог починить токен/права.
         log.exception("Bot crashed/failed to start: %s", e)
+        # держим процесс живым, чтобы смотреть логи и не попадать в рестарт-шторм
         while True:
             await asyncio.sleep(3600)
 
