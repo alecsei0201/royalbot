@@ -1,0 +1,9 @@
+import discord, random, time
+from discord.ext import commands
+from discord import app_commands
+class Serverid(commands.Cog):
+    def __init__(self, bot): self.bot=bot
+    @app_commands.command(name="serverid", description="serverid command")
+    async def serverid(self, it: discord.Interaction, text: str | None = None):
+        await it.response.send_message(f"serverid: " + (text or "ok"))
+async def setup(bot): await bot.add_cog(Serverid(bot))
