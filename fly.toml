@@ -1,0 +1,9 @@
+app = "royalbotrl"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  LOG_LEVEL = "INFO"
+  PYTHONUNBUFFERED = "1"
